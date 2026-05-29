@@ -288,7 +288,6 @@ app.get('/api/progress', verifyToken, (req, res) => {
 // AI Chatbot Route
 // ========================
 
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 app.post('/api/chat', verifyToken, async (req, res) => {
