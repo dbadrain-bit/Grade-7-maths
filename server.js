@@ -1,3 +1,4 @@
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 import express from 'express';
 import sqlite3 from 'sqlite3';
 import bcrypt from 'bcryptjs';
@@ -77,7 +78,7 @@ const verifyToken = (req, res, next) => {
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
-  
+
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) {
       return res.status(401).json({ error: 'Invalid token' });
@@ -287,6 +288,9 @@ app.get('/api/progress', verifyToken, (req, res) => {
 // AI Chatbot Route
 // ========================
 
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
 app.post('/api/chat', verifyToken, async (req, res) => {
   const { message, topic } = req.body;
 
@@ -295,38 +299,23 @@ app.post('/api/chat', verifyToken, async (req, res) => {
   }
 
   try {
-    // Using Hugging Face Inference API (free)
-    const response = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2', {
-      headers: { Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY || 'hf_test'}` },
-      method: 'POST',
-      body: JSON.stringify({
-        inputs: `You are a Grade 7 Ontario math tutor helping students understand concepts. The student is learning about "${topic || 'general math'}". 
-        
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    const prompt = `You are a Grade 7 Ontario math tutor helping students understand concepts. The student is learning about "${topic || 'general math'}".
+
 Student question: ${message}
 
-Provide a helpful hint or explanation to guide the student to the answer (don't give the direct answer). Keep it concise (2-3 sentences).`,
-        parameters: {
-          max_new_tokens: 200,
-          temperature: 0.7
-        }
-      })
-    });
+Provide a helpful hint or explanation to guide the student to the answer (don't give the direct answer). Keep it concise (2-3 sentences).`;
 
-    const result = await response.json();
-    
-    if (result[0]?.generated_text) {
-      const hint = result[0].generated_text.split('Provide a helpful hint')[1]?.trim() || result[0].generated_text;
-      res.json({ hint: hint.substring(0, 500) });
-    } else {
-      // Fallback if API fails
-      res.json({ 
-        hint: `I'm here to help! For ${topic || 'this topic'}, think about the fundamentals. Break the problem into smaller steps. What do you already know about this concept?` 
-      });
-    }
+    const result = await model.generateContent(prompt);
+    const hint = result.response.text();
+
+    res.json({ hint: hint.substring(0, 500) });
+
   } catch (error) {
     console.error('Chat error:', error);
-    res.json({ 
-      hint: `Let me help! Try thinking about the steps involved. What have you learned about ${topic || 'this concept'} so far? Break it down into smaller parts.` 
+    res.json({
+      hint: `Let me help! Try thinking about the steps involved. What have you learned about ${topic || 'this concept'} so far? Break it down into smaller parts.`
     });
   }
 });
