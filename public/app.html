@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade 7 Ontario Math Practice</title>
+    <link rel="stylesheet" href="app.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <h1>Grade 7 Math Practice</h1>
+                <p class="subtitle">Master the curriculum with 20 random questions per topic</p>
+            </div>
+            <div class="header-right">
+                <span id="userDisplay" class="user-display"></span>
+                <button id="logoutBtn" class="btn-logout">Logout</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Topic Selection Screen -->
+            <div id="topicSelection" class="screen active">
+                <div class="topics-grid">
+                    <h2>Select a Topic to Practice</h2>
+                    <div id="topicsContainer" class="topics-container"></div>
+                </div>
+            </div>
+
+            <!-- Quiz Screen -->
+            <div id="quizScreen" class="screen">
+                <div class="quiz-header">
+                    <div class="quiz-info">
+                        <h2 id="topicTitle"></h2>
+                        <p id="progressBar"></p>
+                    </div>
+                    <button id="backBtn" class="btn-secondary">← Back to Topics</button>
+                </div>
+
+                <div class="quiz-container">
+                    <div class="quiz-content">
+                        <div id="questionContainer" class="question-card">
+                            <h3 id="questionNumber"></h3>
+                            <p id="questionText"></p>
+                            <div id="optionsContainer" class="options"></div>
+                        </div>
+
+                        <div id="solutionContainer" class="solution-card hidden">
+                            <h4>Solution</h4>
+                            <p id="solutionText"></p>
+                            <button id="nextBtn" class="btn-primary">Next Question</button>
+                        </div>
+                    </div>
+
+                    <!-- Chatbot Sidebar -->
+                    <div class="chatbot-sidebar">
+                        <div class="chatbot-header">
+                            <h3>💡 Ask for Help</h3>
+                        </div>
+                        <div class="chatbot-messages" id="chatMessages">
+                            <div class="message bot">
+                                <p>Hi! I'm here to help you understand this topic. Ask me a question about the current concept!</p>
+                            </div>
+                        </div>
+                        <div class="chatbot-input">
+                            <input type="text" id="chatInput" placeholder="Ask a hint..." maxlength="200">
+                            <button id="sendChatBtn" class="btn-chat">Send</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quiz-footer">
+                    <button id="submitBtn" class="btn-primary">Submit Answer</button>
+                </div>
+            </div>
+
+            <!-- Results Screen -->
+            <div id="resultsScreen" class="screen">
+                <div class="results-card">
+                    <h2>Quiz Complete!</h2>
+                    <div class="results-stats">
+                        <div class="stat">
+                            <p class="stat-label">Score</p>
+                            <p class="stat-value" id="finalScore">0/20</p>
+                        </div>
+                        <div class="stat">
+                            <p class="stat-label">Percentage</p>
+                            <p class="stat-value" id="finalPercentage">0%</p>
+                        </div>
+                    </div>
+                    <div id="performanceMessage" class="performance-message"></div>
+                    <div class="results-actions">
+                        <button id="retakeBtn" class="btn-primary">Retake Quiz</button>
+                        <button id="selectTopicBtn" class="btn-secondary">Select Different Topic</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="data/questions.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

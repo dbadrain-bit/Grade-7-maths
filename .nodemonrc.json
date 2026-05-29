@@ -1,0 +1,17 @@
+{
+  "watch": [
+    "server.js",
+    "public/app.js"
+  ],
+  "ignore": [
+    "database.db",
+    "node_modules",
+    ".git",
+    "public/data"
+  ],
+  "ext": "js,json",
+  "delay": 1000,
+  "env": {
+    "NODE_ENV": "development"
+  }
+}

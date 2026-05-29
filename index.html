@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade 7 Ontario Math Practice</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Grade 7 Ontario Math Practice</h1>
+            <p class="subtitle">Master the curriculum with 20 random questions per topic</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Topic Selection Screen -->
+            <div id="topicSelection" class="screen active">
+                <div class="topics-grid">
+                    <h2>Select a Topic to Practice</h2>
+                    <div id="topicsContainer" class="topics-container"></div>
+                </div>
+            </div>
+
+            <!-- Quiz Screen -->
+            <div id="quizScreen" class="screen">
+                <div class="quiz-header">
+                    <div class="quiz-info">
+                        <h2 id="topicTitle"></h2>
+                        <p id="progressBar"></p>
+                    </div>
+                    <button id="backBtn" class="btn-secondary">← Back to Topics</button>
+                </div>
+
+                <div class="quiz-content">
+                    <div id="questionContainer" class="question-card">
+                        <h3 id="questionNumber"></h3>
+                        <p id="questionText"></p>
+                        <div id="optionsContainer" class="options"></div>
+                    </div>
+
+                    <div id="solutionContainer" class="solution-card hidden">
+                        <h4>Solution</h4>
+                        <p id="solutionText"></p>
+                        <button id="nextBtn" class="btn-primary">Next Question</button>
+                    </div>
+                </div>
+
+                <div class="quiz-footer">
+                    <button id="submitBtn" class="btn-primary">Submit Answer</button>
+                </div>
+            </div>
+
+            <!-- Results Screen -->
+            <div id="resultsScreen" class="screen">
+                <div class="results-card">
+                    <h2>Quiz Complete!</h2>
+                    <div class="results-stats">
+                        <div class="stat">
+                            <p class="stat-label">Score</p>
+                            <p class="stat-value" id="finalScore">0/20</p>
+                        </div>
+                        <div class="stat">
+                            <p class="stat-label">Percentage</p>
+                            <p class="stat-value" id="finalPercentage">0%</p>
+                        </div>
+                    </div>
+                    <div id="performanceMessage" class="performance-message"></div>
+                    <div class="results-actions">
+                        <button id="retakeBtn" class="btn-primary">Retake Quiz</button>
+                        <button id="selectTopicBtn" class="btn-secondary">Select Different Topic</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="data/questions.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
