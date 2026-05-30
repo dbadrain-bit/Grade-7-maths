@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import express from 'express';
 import sqlite3 from 'sqlite3';
 import bcrypt from 'bcryptjs';

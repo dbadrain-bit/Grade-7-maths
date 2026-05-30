@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Grade 7 Ontario Math Practice App with AI Chatbot",
   "main": "server.js",
+
   "type": "module",
   "scripts": {
     "start": "node server.js",
