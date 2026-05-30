@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Grade 7 Ontario Math Practice App with AI Chatbot",
   "main": "server.js",
-
   "type": "module",
   "scripts": {
     "start": "node server.js",
@@ -11,13 +10,13 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.106.2",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "jsonwebtoken": "^9.0.0",
-    "sqlite3": "^5.1.6"
+    "jsonwebtoken": "^9.0.0"
   },
   "engines": {
     "node": "18.x"

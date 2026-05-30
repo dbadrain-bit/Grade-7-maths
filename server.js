@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import express from 'express';
-import sqlite3 from 'sqlite3';
+import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import cors from 'cors';
@@ -21,56 +21,32 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Database Setup
-const db = new sqlite3.Database('./database.db', (err) => {
-  if (err) console.error('Database error:', err);
-  else console.log('Connected to SQLite database');
-});
+// Supabase Setup
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
-// Initialize database tables
-db.serialize(() => {
-  // Users table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      email TEXT,
-      isAdmin INTEGER DEFAULT 0,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+// Initialize default admin if it doesn't exist
+(async () => {
+  try {
+    const { data: adminUser } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', 'admin')
+      .single();
 
-  // Progress table
-  db.run(`
-    CREATE TABLE IF NOT EXISTS progress (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      userId INTEGER NOT NULL,
-      topic TEXT NOT NULL,
-      score INTEGER,
-      totalQuestions INTEGER,
-      attempts INTEGER DEFAULT 1,
-      lastAttempt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(userId, topic),
-      FOREIGN KEY (userId) REFERENCES users(id)
-    )
-  `);
-
-  // Create default admin if it doesn't exist
-  db.get('SELECT * FROM users WHERE username = ?', ['admin'], async (err, row) => {
-    if (!row) {
+    if (!adminUser) {
       const hashedPassword = await bcrypt.hash('admin123', 10);
-      db.run(
-        'INSERT INTO users (username, password, email, isAdmin) VALUES (?, ?, ?, ?)',
-        ['admin', hashedPassword, 'admin@mathapp.com', 1],
-        (err) => {
-          if (err) console.error('Error creating admin:', err);
-          else console.log('Admin user created (username: admin, password: admin123)');
-        }
-      );
+      await supabase.from('users').insert({
+        username: 'admin',
+        password_hash: hashedPassword,
+        email: 'admin@mathapp.com',
+        is_admin: true
+      });
+      console.log('Admin user created (username: admin, password: admin123)');
     }
-  });
-});
+  } catch (err) {
+    console.log('Admin user initialization (may already exist):', err.message);
+  }
+})();
 
 // Middleware for JWT verification
 const verifyToken = (req, res, next) => {
@@ -102,19 +78,19 @@ app.post('/api/register', async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    db.run(
-      'INSERT INTO users (username, password, email) VALUES (?, ?, ?)',
-      [username, hashedPassword, email || null],
-      function (err) {
-        if (err) {
-          if (err.message.includes('UNIQUE')) {
-            return res.status(400).json({ error: 'Username already exists' });
-          }
-          return res.status(500).json({ error: 'Database error' });
-        }
-        res.status(201).json({ message: 'User registered successfully' });
+    const { error } = await supabase.from('users').insert({
+      username,
+      password_hash: hashedPassword,
+      email: email || null
+    });
+
+    if (error) {
+      if (error.message.includes('unique')) {
+        return res.status(400).json({ error: 'Username already exists' });
       }
-    );
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -127,21 +103,24 @@ app.post('/api/login', async (req, res) => {
     return res.status(400).json({ error: 'Username and password required' });
   }
 
-  db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
-    if (!user) {
+  try {
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .single();
+
+    if (error || !user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const token = jwt.sign(
-      { userId: user.id, isAdmin: user.isAdmin },
+      { userId: user.id, isAdmin: user.is_admin },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -152,27 +131,35 @@ app.post('/api/login', async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        isAdmin: user.isAdmin
+        isAdmin: user.is_admin
       }
     });
-  });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // ========================
 // Admin Routes
 // ========================
 
-app.get('/api/admin/users', verifyToken, (req, res) => {
+app.get('/api/admin/users', verifyToken, async (req, res) => {
   if (!req.isAdmin) {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
-  db.all('SELECT id, username, email, isAdmin, createdAt FROM users', (err, users) => {
-    if (err) {
+  try {
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, username, email, is_admin, created_at');
+
+    if (error) {
       return res.status(500).json({ error: 'Database error' });
     }
     res.json(users);
-  });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 app.post('/api/admin/users', verifyToken, async (req, res) => {
@@ -188,25 +175,30 @@ app.post('/api/admin/users', verifyToken, async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    db.run(
-      'INSERT INTO users (username, password, email, isAdmin) VALUES (?, ?, ?, ?)',
-      [username, hashedPassword, email || null, isAdmin ? 1 : 0],
-      function (err) {
-        if (err) {
-          if (err.message.includes('UNIQUE')) {
-            return res.status(400).json({ error: 'Username already exists' });
-          }
-          return res.status(500).json({ error: 'Database error' });
-        }
-        res.status(201).json({ message: 'User created successfully', userId: this.lastID });
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        username,
+        password_hash: hashedPassword,
+        email: email || null,
+        is_admin: isAdmin ? true : false
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      if (error.message.includes('unique')) {
+        return res.status(400).json({ error: 'Username already exists' });
       }
-    );
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.status(201).json({ message: 'User created successfully', userId: data.id });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-app.delete('/api/admin/users/:id', verifyToken, (req, res) => {
+app.delete('/api/admin/users/:id', verifyToken, async (req, res) => {
   if (!req.isAdmin) {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -216,72 +208,107 @@ app.delete('/api/admin/users/:id', verifyToken, (req, res) => {
     return res.status(400).json({ error: 'Cannot delete admin user' });
   }
 
-  db.run('DELETE FROM users WHERE id = ?', [userId], (err) => {
-    if (err) {
+  try {
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId);
+
+    if (error) {
       return res.status(500).json({ error: 'Database error' });
     }
     res.json({ message: 'User deleted successfully' });
-  });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
-app.put('/api/admin/users/:id/toggle-admin', verifyToken, (req, res) => {
+app.put('/api/admin/users/:id/toggle-admin', verifyToken, async (req, res) => {
   if (!req.isAdmin) {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
   const userId = req.params.id;
-  db.run(
-    'UPDATE users SET isAdmin = 1 - isAdmin WHERE id = ?',
-    [userId],
-    (err) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.json({ message: 'Admin status toggled' });
+
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+
+    const { error } = await supabase
+      .from('users')
+      .update({ is_admin: !user.is_admin })
+      .eq('id', userId);
+
+    if (error) {
+      return res.status(500).json({ error: 'Database error' });
     }
-  );
+    res.json({ message: 'Admin status toggled' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // ========================
 // Progress Routes
 // ========================
 
-app.post('/api/progress', verifyToken, (req, res) => {
+app.post('/api/progress', verifyToken, async (req, res) => {
   const { topic, score, totalQuestions } = req.body;
 
   if (!topic || score === undefined || !totalQuestions) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  db.run(
-    `INSERT INTO progress (userId, topic, score, totalQuestions, attempts)
-     VALUES (?, ?, ?, ?, 1)
-     ON CONFLICT(userId, topic) DO UPDATE SET
-     attempts = attempts + 1,
-     score = ?,
-     totalQuestions = ?,
-     lastAttempt = CURRENT_TIMESTAMP`,
-    [req.userId, topic, score, totalQuestions, score, totalQuestions],
-    function (err) {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.status(201).json({ message: 'Progress saved' });
+  try {
+    const { data: existing } = await supabase
+      .from('progress')
+      .select('id')
+      .eq('user_id', req.userId)
+      .eq('topic', topic)
+      .single();
+
+    if (existing) {
+      await supabase
+        .from('progress')
+        .update({
+          score,
+          total_questions: totalQuestions,
+          created_at: new Date().toISOString()
+        })
+        .eq('id', existing.id);
+    } else {
+      await supabase.from('progress').insert({
+        user_id: req.userId,
+        topic,
+        score,
+        total_questions: totalQuestions
+      });
     }
-  );
+
+    res.status(201).json({ message: 'Progress saved' });
+  } catch (error) {
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
-app.get('/api/progress', verifyToken, (req, res) => {
-  db.all(
-    'SELECT * FROM progress WHERE userId = ? ORDER BY lastAttempt DESC',
-    [req.userId],
-    (err, progress) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.json(progress);
+app.get('/api/progress', verifyToken, async (req, res) => {
+  try {
+    const { data: progress, error } = await supabase
+      .from('progress')
+      .select('*')
+      .eq('user_id', req.userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ error: 'Database error' });
     }
-  );
+    res.json(progress);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // ========================

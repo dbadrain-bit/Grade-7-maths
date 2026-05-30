@@ -8,10 +8,6 @@ node_modules/
 package-lock.json
 yarn.lock
 
-# Database
-database.db
-*.db
-
 # IDE and editor
 .vscode/
 .idea/
