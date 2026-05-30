@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import express from 'express';
 import { createClient } from '@supabase/supabase-js';
@@ -44,7 +47,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
       console.log('Admin user created (username: admin, password: admin123)');
     }
   } catch (err) {
-    console.log('Admin user initialization (may already exist):', err.message);
+    console.log('Admin initialization:', err.message);
   }
 })();
 
@@ -85,13 +88,15 @@ app.post('/api/register', async (req, res) => {
     });
 
     if (error) {
+      console.error('Register error:', error);
       if (error.message.includes('unique')) {
         return res.status(400).json({ error: 'Username already exists' });
       }
-      return res.status(500).json({ error: 'Database error' });
+      return res.status(500).json({ error: 'Database error', details: error.message });
     }
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
+    console.error('Register exception:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
